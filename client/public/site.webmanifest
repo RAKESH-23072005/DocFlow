@@ -1,0 +1,17 @@
+{
+    "name": "docFlow - Free Online Image Compressor",
+    "short_name": "docFlow",
+    "description": "Free online image compression tool for JPG, PNG, GIF, and WebP images",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#3B82F6",
+    "orientation": "portrait-primary",
+    "categories": [
+        "utilities",
+        "productivity",
+        "photo"
+    ],
+    "lang": "en",
+    "dir": "ltr"
+}

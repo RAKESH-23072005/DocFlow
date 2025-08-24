@@ -1,0 +1,29 @@
+@layer components {
+  .page-container {
+    @apply max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12;
+  }
+
+  .page-header {
+    @apply text-center mb-12;
+  }
+
+  .card-grid-3 {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-6;
+  }
+
+  .card {
+    @apply bg-white rounded-lg p-6 shadow-sm border border-gray-200;
+  }
+
+  .prose-box {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-8;
+  }
+
+  .section-title {
+    @apply text-2xl font-bold text-gray-900 mb-4;
+  }
+
+  .muted {
+    @apply text-gray-600;
+  }
+}
