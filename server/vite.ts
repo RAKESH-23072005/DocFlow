@@ -64,10 +64,17 @@ export async function setupVite(app: Express, server: Server) {
 // 🚀 Used in production
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "..", "dist");
+  const publicPath = path.resolve(distPath, "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to run "npm run build" first.`
+    );
+  }
+
+  if (!fs.existsSync(publicPath)) {
+    throw new Error(
+      `Could not find the public directory: ${publicPath}, make sure to run "npm run build" first.`
     );
   }
 
@@ -80,9 +87,9 @@ export function serveStatic(app: Express) {
     next();
   });
 
-  app.use(express.static(distPath));
+  app.use(express.static(publicPath));
 
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(path.resolve(publicPath, "index.html"));
   });
 }
