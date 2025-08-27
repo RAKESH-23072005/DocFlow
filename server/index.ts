@@ -8,16 +8,16 @@ import cors from "cors";
 const app = express();
 
 // Environment check
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === "development";
 
-// Enhanced security middleware
+// --- Security Middleware ---
 app.use(helmet({
   contentSecurityPolicy: isDevelopment ? false : {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for Tailwind
-      imgSrc: ["'self'", "data:", "blob:"], // Allow data URLs for image compression
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
@@ -25,8 +25,8 @@ app.use(helmet({
       frameSrc: ["'none'"],
     },
   },
-  crossOriginEmbedderPolicy: false, // Allow image compression
-  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow image processing
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
   referrerPolicy: { policy: "no-referrer" },
   strictTransportSecurity: isDevelopment ? false : {
     maxAge: 63072000,
@@ -38,160 +38,137 @@ app.use(helmet({
   xXssProtection: true,
 }));
 
-// Enhanced CORS configuration
+// --- CORS ---
 const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
-
-const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // In development, allow all origins for easier testing
-    if (isDevelopment) {
-      return callback(null, true);
-    }
-    
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
+app.use(cors({
+  origin: (origin, callback) => {
+    if (isDevelopment || !origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true,
   optionsSuccessStatus: 200,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-};
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+}));
 
-app.use(cors(corsOptions));
-
-// Enhanced rate limiting
+// --- Rate Limiting ---
 app.use(rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // limit each IP to 200 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many requests from this IP, please try again later.',
-  skipSuccessfulRequests: false,
-  skipFailedRequests: false,
+  message: "Too many requests from this IP, please try again later.",
 }));
 
-// Enhanced body parsing with stricter limits
-app.use(express.json({ 
-  limit: "10mb", // Increased for image uploads
-  verify: (req, res, buf) => {
-    // Basic content type validation
-    if (req.headers['content-type'] && !req.headers['content-type'].includes('application/json')) {
-      throw new Error('Invalid content type');
-    }
-  }
-}));
-app.use(express.urlencoded({ 
-  extended: false, 
+// --- Body Parsing ---
+app.use(express.json({
   limit: "10mb",
-  parameterLimit: 100 // Limit number of parameters
+  verify: (req, res, buf) => {
+    if (req.headers["content-type"] && 
+        !req.headers["content-type"].includes("application/json")) {
+      throw new Error("Invalid content type");
+    }
+  },
+}));
+app.use(express.urlencoded({
+  extended: false,
+  limit: "10mb",
+  parameterLimit: 100,
 }));
 
-// Utility to redact common PII fields in logs
+// --- Utility: Redact PII ---
 function redactPII(obj: any): any {
-  if (obj == null || typeof obj !== 'object') return obj;
-  const PII_FIELDS = ['email', 'name', 'token', 'password', 'pass', 'secret', 'session', 'id', 'phone', 'address'];
+  if (obj == null || typeof obj !== "object") return obj;
+  const PII_FIELDS = ["email", "name", "token", "password", "pass", "secret", "session", "id", "phone", "address"];
   if (Array.isArray(obj)) return obj.map(redactPII);
-  const redacted: Record<string, any> = {};
-  for (const key of Object.keys(obj)) {
-    if (PII_FIELDS.includes(key.toLowerCase())) {
-      redacted[key] = '[REDACTED]';
-    } else if (typeof obj[key] === 'object') {
-      redacted[key] = redactPII(obj[key]);
-    } else {
-      redacted[key] = obj[key];
-    }
-  }
-  return redacted;
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key,
+      PII_FIELDS.includes(key.toLowerCase())
+        ? "[REDACTED]"
+        : typeof value === "object"
+        ? redactPII(value)
+        : value,
+    ])
+  );
 }
 
-// Enhanced logging middleware with security
+// --- Logging Middleware ---
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  
-  // Security logging
-  const userAgent = req.get('User-Agent') || 'Unknown';
-  const ip = req.ip || req.connection.remoteAddress || 'Unknown';
-  
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  const userAgent = req.get("User-Agent") || "Unknown";
+  const ip = req.ip || req.socket.remoteAddress || "Unknown";
+
+  let capturedJsonResponse: any;
   const originalResJson = res.json;
-  res.json = function (bodyJson: any, ...args: any[]): any {
-    capturedJsonResponse = bodyJson;
-    // Only pass the first argument to match the expected signature
-    return originalResJson.apply(res, [bodyJson]);
-  } as any;
-  
+  res.json = function (body: any) {
+    capturedJsonResponse = body;
+    return originalResJson.call(this, body);
+  };
+
   res.on("finish", () => {
-    const duration = Date.now() - start;
     if (path.startsWith("/api")) {
+      const duration = Date.now() - start;
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms - IP: ${ip} - UA: ${userAgent}`;
       if (capturedJsonResponse) {
-        // Redact PII fields before logging
         const safeJson = redactPII(capturedJsonResponse);
         logLine += ` :: ${JSON.stringify(safeJson)}`;
       }
-      if (logLine.length > 200) {
-        logLine = logLine.slice(0, 199) + "…";
-      }
+      if (logLine.length > 200) logLine = logLine.slice(0, 199) + "…";
       log(logLine);
     }
   });
+
   next();
 });
 
-// Create and configure the server
+// --- Server Setup ---
 export async function createServer() {
   const server = await registerRoutes(app);
-  
-  // Enhanced error handling
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    
-    // Don't expose internal errors in production
-    const safeMessage = process.env.NODE_ENV === 'production' && status >= 500 
-      ? 'Internal Server Error' 
-      : message;
-    
-    res.status(status).json({ 
-      message: safeMessage,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-    });
-    
-    log(`Error ${status}: ${message}`, "error");
-  });
-  
-  if (app.get("env") === "development") {
+
+  if (isDevelopment) {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
-  
+
+  // Error handling (after routes/middleware)
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const safeMessage =
+      process.env.NODE_ENV === "production" && status >= 500
+        ? "Internal Server Error"
+        : err.message || "Error";
+
+    res.status(status).json({
+      message: safeMessage,
+      ...(isDevelopment && { stack: err.stack }),
+    });
+
+    log(`Error ${status}: ${err.message}`, "error");
+  });
+
   return server;
 }
 
-// Start the server
+// --- Bootstrapping ---
 (async () => {
   try {
     const server = await createServer();
     const port = process.env.PORT || 5137;
-    server.listen({
-      port,
-      host: "0.0.0.0",
-    }, () => {
-      log(`Server running on port ${port}`);
-      if (process.env.NODE_ENV === 'development') {
-        log(`Development server: http://localhost:${port}`);
+    server.listen(port, () => {
+      log(`🚀 Server running on port ${port}`);
+      if (isDevelopment) {
+        log(`Dev server: http://localhost:${port}`);
       }
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 })();

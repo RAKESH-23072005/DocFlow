@@ -17,7 +17,7 @@ const ALLOWED_MIME_TYPES = [
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
 
-function isValidImageFile(file: Multer.File): { valid: boolean; error?: string } {
+function isValidImageFile(file: any): { valid: boolean; error?: string } {
   // Check file size
   if (file.size > MAX_FILE_SIZE) {
     return { valid: false, error: `File size exceeds ${MAX_FILE_SIZE / (1024 * 1024)}MB limit` };

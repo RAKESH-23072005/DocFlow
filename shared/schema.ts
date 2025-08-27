@@ -12,10 +12,25 @@ export const compressionJobs = pgTable("compression_jobs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertCompressionJobSchema = createInsertSchema(compressionJobs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
 });
 
 export type InsertCompressionJob = z.infer<typeof insertCompressionJobSchema>;
 export type CompressionJob = typeof compressionJobs.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
