@@ -81,22 +81,7 @@ A modern, full-stack image compression web application built with React, TypeScr
 ## Project Structure
 
 ```
-ImageCompressor/
-├── client/                 # Frontend React application
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/         # Page components
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── lib/           # Utility functions
-│   │   └── styles/        # Global styles
-│   └── public/            # Static assets
-├── server/                # Backend Node.js application
-│   ├── index.ts          # Server entry point
-│   ├── routes.ts         # API routes
-│   └── vite.ts           # Vite integration
-├── shared/               # Shared types and utilities
-├── test/                 # Test files
-└── scripts/              # Build and utility scripts
+n 
 ```
 
 ## API Endpoints

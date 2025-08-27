@@ -145,7 +145,8 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
+// Create and configure the server
+export async function createServer() {
   const server = await registerRoutes(app);
   
   // Enhanced error handling
@@ -172,11 +173,25 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
   
-  const port = process.env.PORT || 5137;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-  }, () => {
-    log(`Server running at http://localhost:${port}`);
-  });
+  return server;
+}
+
+// Start the server
+(async () => {
+  try {
+    const server = await createServer();
+    const port = process.env.PORT || 5137;
+    server.listen({
+      port,
+      host: "0.0.0.0",
+    }, () => {
+      log(`Server running on port ${port}`);
+      if (process.env.NODE_ENV === 'development') {
+        log(`Development server: http://localhost:${port}`);
+      }
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
 })();
