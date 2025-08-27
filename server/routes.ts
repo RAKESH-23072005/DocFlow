@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import nodemailer from "nodemailer";
 import rateLimit from "express-rate-limit";
-import type { Multer } from "multer";
+// Multer types are available globally
 
 // Enhanced file validation
 const ALLOWED_MIME_TYPES = [
